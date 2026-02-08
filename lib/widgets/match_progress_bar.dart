@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'crystal_orb.dart';
+import 'particle_explosion.dart';
 
 class MatchProgressBar extends StatefulWidget {
   final int myProgress; // 0-5 (my progress from left)
@@ -23,80 +25,93 @@ class MatchProgressBar extends StatefulWidget {
   State<MatchProgressBar> createState() => _MatchProgressBarState();
 }
 
-class _MatchProgressBarState extends State<MatchProgressBar>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _heartBeatController;
-  late Animation<double> _heartBeatAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _heartBeatController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _heartBeatAnimation = Tween<double>(begin: 1.0, end: 1.25).animate(
-      CurvedAnimation(
-        parent: _heartBeatController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    // Start beating if already complete
-    if (widget.isComplete) {
-      _heartBeatController.repeat(reverse: true);
-    }
-  }
+class _MatchProgressBarState extends State<MatchProgressBar> {
+  bool _showExplosion = false;
+  bool _hasExploded = false;
 
   @override
   void didUpdateWidget(MatchProgressBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isComplete && !oldWidget.isComplete) {
-      _heartBeatController.repeat(reverse: true);
+    if (widget.isComplete && !oldWidget.isComplete && !_hasExploded) {
+      setState(() {
+        _showExplosion = true;
+        _hasExploded = true;
+      });
     } else if (!widget.isComplete && oldWidget.isComplete) {
-      _heartBeatController.stop();
-      _heartBeatController.reset();
+      _hasExploded = false;
     }
-  }
-
-  @override
-  void dispose() {
-    _heartBeatController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Column(
         children: [
-          // Main progress row with avatars
-          Row(
-            children: [
-              // ME avatar (far left)
-              _buildAvatar(isMe: true),
-              const SizedBox(width: 8),
+          // Main progress row with avatars and crystal orb
+          SizedBox(
+            height: 70,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Progress bar background
+                Positioned(
+                  left: 50,
+                  right: 50,
+                  top: 25,
+                  child: _buildProgressBar(),
+                ),
 
-              // Thick dual progress bar with heart
-              Expanded(
-                child: _buildLiquidProgressBar(),
-              ),
+                // ME avatar (far left)
+                Positioned(
+                  left: 0,
+                  top: 8,
+                  child: _buildAvatar(isMe: true),
+                ),
 
-              const SizedBox(width: 8),
-              // THEM avatar (far right)
-              _buildAvatar(isMe: false),
-            ],
+                // THEM avatar (far right)
+                Positioned(
+                  right: 0,
+                  top: 8,
+                  child: _buildAvatar(isMe: false),
+                ),
+
+                // Crystal Orb in center
+                Positioned.fill(
+                  child: Center(
+                    child: CrystalOrb(
+                      isComplete: widget.isComplete,
+                      size: 56,
+                    ),
+                  ),
+                ),
+
+                // Particle explosion overlay
+                if (_showExplosion)
+                  Positioned.fill(
+                    child: ParticleExplosion(
+                      trigger: _showExplosion,
+                      onComplete: () {
+                        if (mounted) {
+                          setState(() => _showExplosion = false);
+                        }
+                      },
+                    ),
+                  ),
+              ],
+            ),
           ),
+
           const SizedBox(height: 8),
+
           // Labels below
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildLabel('ME'),
-                _buildLabel('THEM'),
+                _buildLabel('YOU'),
+                _buildLabel('MATCH'),
               ],
             ),
           ),
@@ -107,111 +122,89 @@ class _MatchProgressBarState extends State<MatchProgressBar>
 
   Widget _buildAvatar({required bool isMe}) {
     return Container(
-      width: 48,
-      height: 48,
+      width: 52,
+      height: 52,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppTheme.warmBerry,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isMe
+              ? [AppTheme.crystalCyan.withValues(alpha: 0.3), AppTheme.midPurple]
+              : [AppTheme.crystalPink.withValues(alpha: 0.3), AppTheme.midPurple],
+        ),
         border: Border.all(
-          color: isMe ? AppTheme.coralPink : AppTheme.softPlum,
-          width: 3,
+          color: isMe ? AppTheme.crystalCyan : AppTheme.crystalPink,
+          width: 2.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: (isMe ? AppTheme.coralPink : AppTheme.softPlum)
-                .withValues(alpha: 0.3),
-            blurRadius: 8,
+            color: (isMe ? AppTheme.crystalCyan : AppTheme.crystalPink)
+                .withValues(alpha: 0.4),
+            blurRadius: 12,
             spreadRadius: 2,
           ),
         ],
       ),
       child: ClipOval(
-        child: isMe ? _buildMyAvatar() : _buildTheirAvatar(),
-      ),
-    );
-  }
-
-  Widget _buildMyAvatar() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.coralPink.withValues(alpha: 0.3),
-            AppTheme.warmBerry,
-          ],
-        ),
-      ),
-      child: const Center(
-        child: Icon(
-          Icons.person,
-          color: AppTheme.coralPink,
-          size: 28,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTheirAvatar() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Container(
+        child: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            gradient: RadialGradient(
               colors: [
-                AppTheme.softPlum.withValues(alpha: 0.5),
-                AppTheme.warmBerry,
+                (isMe ? AppTheme.crystalCyan : AppTheme.crystalPink)
+                    .withValues(alpha: 0.2),
+                AppTheme.midPurple,
               ],
             ),
           ),
           child: Center(
             child: Icon(
               Icons.person,
-              color: AppTheme.mutedText.withValues(alpha: 0.6),
+              color: isMe ? AppTheme.crystalCyan : AppTheme.mutedText,
               size: 28,
             ),
           ),
         ),
-        // Blur overlay
-        Container(
-          decoration: BoxDecoration(
-            color: AppTheme.deepPlum
-                .withValues(alpha: 0.2 + (widget.theirBlurLevel * 0.12)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: AppTheme.mutedText,
-        fontSize: 11,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1.5,
       ),
     );
   }
 
-  Widget _buildLiquidProgressBar() {
+  Widget _buildLabel(String text) {
     return Container(
-      height: 24,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
       decoration: BoxDecoration(
-        color: AppTheme.warmBerry,
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.midPurple.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: AppTheme.softPlum.withValues(alpha: 0.5),
+          color: AppTheme.softPurple.withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppTheme.mutedText,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressBar() {
+    return Container(
+      height: 20,
+      decoration: BoxDecoration(
+        color: AppTheme.deepPurple,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppTheme.softPurple.withValues(alpha: 0.5),
           width: 2,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.pillShadow.withValues(alpha: 0.5),
+            color: AppTheme.pillShadow.withValues(alpha: 0.6),
             offset: const Offset(0, 3),
             blurRadius: 6,
           ),
@@ -219,28 +212,28 @@ class _MatchProgressBarState extends State<MatchProgressBar>
       ),
       child: Stack(
         children: [
-          // MY progress - liquid fill from left
+          // MY progress - energy fill from left
           Align(
             alignment: Alignment.centerLeft,
             child: AnimatedFractionallySizedBox(
               duration: const Duration(milliseconds: 400),
               curve: Curves.easeOut,
-              widthFactor: (widget.myProgress / 5) * 0.45,
+              widthFactor: (widget.myProgress / 5) * 0.42,
               child: Container(
                 margin: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.coralPink.withValues(alpha: 0.8),
-                      AppTheme.coralPink,
-                      AppTheme.heartRed.withValues(alpha: 0.9),
+                      AppTheme.crystalCyan.withValues(alpha: 0.6),
+                      AppTheme.crystalCyan,
+                      AppTheme.electricBlue,
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.coralPink.withValues(alpha: 0.4),
-                      blurRadius: 6,
+                      color: AppTheme.crystalCyan.withValues(alpha: 0.6),
+                      blurRadius: 8,
                     ),
                   ],
                 ),
@@ -248,67 +241,30 @@ class _MatchProgressBarState extends State<MatchProgressBar>
             ),
           ),
 
-          // THEIR progress - liquid fill from right
+          // THEIR progress - energy fill from right
           Align(
             alignment: Alignment.centerRight,
             child: AnimatedFractionallySizedBox(
               duration: const Duration(milliseconds: 400),
               curve: Curves.easeOut,
-              widthFactor: (widget.theirProgress / 5) * 0.45,
+              widthFactor: (widget.theirProgress / 5) * 0.42,
               child: Container(
                 margin: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.heartRed.withValues(alpha: 0.9),
-                      AppTheme.coralPink,
-                      AppTheme.coralPink.withValues(alpha: 0.8),
+                      AppTheme.electricBlue,
+                      AppTheme.crystalPink,
+                      AppTheme.crystalPink.withValues(alpha: 0.6),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(6),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.coralPink.withValues(alpha: 0.4),
-                      blurRadius: 6,
+                      color: AppTheme.crystalPink.withValues(alpha: 0.6),
+                      blurRadius: 8,
                     ),
                   ],
-                ),
-              ),
-            ),
-          ),
-
-          // Big red pulsing heart in center
-          Center(
-            child: ScaleTransition(
-              scale: _heartBeatAnimation,
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: widget.isComplete
-                      ? AppTheme.heartRed
-                      : AppTheme.deepPlum,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppTheme.heartRed,
-                    width: 3,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.heartRed.withValues(
-                        alpha: widget.isComplete ? 0.6 : 0.3,
-                      ),
-                      blurRadius: widget.isComplete ? 16 : 8,
-                      spreadRadius: widget.isComplete ? 4 : 2,
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.favorite,
-                  color: widget.isComplete
-                      ? AppTheme.cream
-                      : AppTheme.heartRed,
-                  size: 24,
                 ),
               ),
             ),

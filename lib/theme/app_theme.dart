@@ -1,63 +1,79 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Warm plum/berry color palette
-  static const Color deepPlum = Color(0xFF2D1B36);
-  static const Color warmBerry = Color(0xFF3D2847);
-  static const Color softPlum = Color(0xFF4A3255);
-  static const Color lightPlum = Color(0xFF5C4168);
+  // Deep game background
+  static const Color deepPurple = Color(0xFF1A0A2E);
+  static const Color midPurple = Color(0xFF2D1B4E);
+  static const Color softPurple = Color(0xFF3D2B5E);
 
-  // Accent colors
-  static const Color heartRed = Color(0xFFFF5252); // Bright red for heart
-  static const Color coralPink = Color(0xFFFF8A80);
-  static const Color softPink = Color(0xFFFFAB91);
+  // Vibrant game accents
+  static const Color crystalCyan = Color(0xFF00F5FF);
+  static const Color crystalPink = Color(0xFFFF6BF3);
+  static const Color crystalGold = Color(0xFFFFD700);
+  static const Color electricBlue = Color(0xFF4D9FFF);
+
+  // Pastel frosted colors
+  static const Color frostedPink = Color(0xFFFFB3D9);
+  static const Color frostedBlue = Color(0xFFB3E5FF);
+  static const Color frostedPurple = Color(0xFFD9B3FF);
+  static const Color frostedMint = Color(0xFFB3FFE0);
+  static const Color frostedPeach = Color(0xFFFFD9B3);
 
   // Text colors
-  static const Color cream = Color(0xFFFFF8F0);
-  static const Color softCream = Color(0xFFE8DED5);
-  static const Color mutedText = Color(0xFFB8A8B8);
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color softWhite = Color(0xFFF0E6FF);
+  static const Color mutedText = Color(0xFFB8A8C8);
 
-  // Button colors
-  static const Color pillBackground = Color(0xFF4A3255);
-  static const Color pillShadow = Color(0xFF1A0F1F);
-  static const Color pillHighlight = Color(0xFF6B5278);
+  // Glow colors
+  static const Color glowCyan = Color(0xFF00F5FF);
+  static const Color glowPink = Color(0xFFFF6BF3);
 
-  // Legacy aliases for compatibility
-  static const Color darkNavy = deepPlum;
-  static const Color mintGreen = coralPink;
-  static const Color lightNavy = warmBerry;
-  static const Color slate = mutedText;
-  static const Color lightSlate = softCream;
-  static const Color white = cream;
-  static const Color buttonShadow = pillShadow;
-  static const Color buttonHighlight = pillHighlight;
+  // Legacy aliases
+  static const Color deepPlum = deepPurple;
+  static const Color warmBerry = midPurple;
+  static const Color cream = white;
+  static const Color heartRed = crystalPink;
+  static const Color coralPink = crystalPink;
+  static const Color softCream = softWhite;
+  static const Color pillShadow = Color(0xFF0A0515);
+  static const Color lightPlum = softPurple;
+  static const Color softPlum = midPurple;
+
+  // Pastel palette for buttons
+  static const List<Color> pastelPalette = [
+    frostedPink,
+    frostedBlue,
+    frostedPurple,
+    frostedMint,
+    frostedPeach,
+  ];
 
   static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: deepPlum,
-      primaryColor: heartRed,
+      scaffoldBackgroundColor: deepPurple,
+      primaryColor: crystalCyan,
       colorScheme: const ColorScheme.dark(
-        primary: heartRed,
-        secondary: coralPink,
-        surface: warmBerry,
-        onPrimary: cream,
-        onSecondary: deepPlum,
-        onSurface: cream,
+        primary: crystalCyan,
+        secondary: crystalPink,
+        surface: midPurple,
+        onPrimary: deepPurple,
+        onSecondary: deepPurple,
+        onSurface: white,
       ),
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
-          color: cream,
+          color: white,
           fontSize: 28,
           fontWeight: FontWeight.bold,
         ),
         headlineMedium: TextStyle(
-          color: cream,
+          color: white,
           fontSize: 24,
           fontWeight: FontWeight.bold,
         ),
         bodyLarge: TextStyle(
-          color: softCream,
+          color: softWhite,
           fontSize: 18,
         ),
         bodyMedium: TextStyle(
@@ -65,17 +81,17 @@ class AppTheme {
           fontSize: 16,
         ),
         labelLarge: TextStyle(
-          color: deepPlum,
+          color: deepPurple,
           fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: deepPlum,
+        backgroundColor: deepPurple,
         elevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
-          color: cream,
+          color: white,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),

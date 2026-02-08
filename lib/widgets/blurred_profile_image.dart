@@ -13,7 +13,6 @@ class BlurredProfileImage extends StatelessWidget {
   });
 
   double get blurAmount {
-    // 5 levels: 20, 16, 12, 8, 4, 0 (fully revealed)
     return (5 - revealProgress) * 4.0;
   }
 
@@ -23,32 +22,34 @@ class BlurredProfileImage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 280,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: AppTheme.coralPink.withValues(alpha: 0.4),
-          width: 3,
+          color: revealProgress == 5
+              ? AppTheme.crystalCyan.withValues(alpha: 0.6)
+              : AppTheme.softPurple.withValues(alpha: 0.5),
+          width: 2.5,
         ),
         boxShadow: [
           BoxShadow(
             color: AppTheme.pillShadow.withValues(alpha: 0.6),
-            offset: const Offset(0, 6),
-            blurRadius: 16,
+            offset: const Offset(0, 4),
+            blurRadius: 12,
           ),
-          BoxShadow(
-            color: AppTheme.coralPink.withValues(alpha: 0.15),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
+          if (revealProgress == 5)
+            BoxShadow(
+              color: AppTheme.crystalCyan.withValues(alpha: 0.3),
+              blurRadius: 20,
+              spreadRadius: 4,
+            ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(21),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Placeholder image (warm gradient)
+            // Placeholder image
             _buildPlaceholderImage(),
 
             // Blur overlay
@@ -59,54 +60,51 @@ class BlurredProfileImage extends StatelessWidget {
                   sigmaY: blurAmount,
                 ),
                 child: Container(
-                  color: AppTheme.deepPlum.withValues(alpha: 0.15),
+                  color: AppTheme.deepPurple.withValues(alpha: 0.2),
                 ),
               ),
 
             // Reveal percentage indicator
             Positioned(
-              bottom: 16,
+              bottom: 10,
               left: 0,
               right: 0,
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 10,
+                    horizontal: 14,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.deepPlum.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(24),
+                    color: AppTheme.deepPurple.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppTheme.coralPink.withValues(alpha: 0.5),
-                      width: 2,
+                      color: revealProgress == 5
+                          ? AppTheme.crystalCyan
+                          : AppTheme.softPurple,
+                      width: 1.5,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.pillShadow.withValues(alpha: 0.4),
-                        offset: const Offset(0, 3),
-                        blurRadius: 6,
-                      ),
-                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         revealProgress == 5
-                            ? Icons.favorite
-                            : Icons.favorite_border,
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                         color: revealProgress == 5
-                            ? AppTheme.heartRed
-                            : AppTheme.coralPink,
-                        size: 18,
+                            ? AppTheme.crystalCyan
+                            : AppTheme.mutedText,
+                        size: 14,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
-                        '$revealPercentage% Revealed',
-                        style: const TextStyle(
-                          color: AppTheme.cream,
-                          fontSize: 14,
+                        '$revealPercentage%',
+                        style: TextStyle(
+                          color: revealProgress == 5
+                              ? AppTheme.crystalCyan
+                              : AppTheme.mutedText,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -116,43 +114,31 @@ class BlurredProfileImage extends StatelessWidget {
               ),
             ),
 
-            // Lock icon when fully blurred
+            // Lock overlay when fully blurred
             if (revealProgress == 0)
               Center(
                 child: Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppTheme.deepPlum.withValues(alpha: 0.8),
+                    color: AppTheme.deepPurple.withValues(alpha: 0.8),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppTheme.coralPink.withValues(alpha: 0.5),
-                      width: 3,
+                      color: AppTheme.crystalPink.withValues(alpha: 0.5),
+                      width: 2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.heartRed.withValues(alpha: 0.2),
-                        blurRadius: 20,
+                        color: AppTheme.crystalPink.withValues(alpha: 0.3),
+                        blurRadius: 16,
                         spreadRadius: 4,
                       ),
                     ],
                   ),
                   child: const Icon(
-                    Icons.favorite,
-                    color: AppTheme.coralPink,
-                    size: 44,
+                    Icons.lock,
+                    color: AppTheme.crystalPink,
+                    size: 28,
                   ),
-                ),
-              ),
-
-            // Sparkle effect when fully revealed
-            if (revealProgress == 5)
-              Positioned(
-                top: 20,
-                right: 20,
-                child: Icon(
-                  Icons.auto_awesome,
-                  color: AppTheme.heartRed.withValues(alpha: 0.8),
-                  size: 28,
                 ),
               ),
           ],
@@ -162,23 +148,22 @@ class BlurredProfileImage extends StatelessWidget {
   }
 
   Widget _buildPlaceholderImage() {
-    // Warm gradient placeholder
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.softPlum,
-            AppTheme.warmBerry,
-            AppTheme.deepPlum.withValues(alpha: 0.9),
+            AppTheme.softPurple,
+            AppTheme.midPurple,
+            AppTheme.deepPurple.withValues(alpha: 0.9),
           ],
         ),
       ),
       child: Center(
         child: Icon(
           Icons.person,
-          size: 100,
+          size: 60,
           color: AppTheme.mutedText.withValues(alpha: 0.4),
         ),
       ),
