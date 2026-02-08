@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
+  // Game state
   int _currentRound = 0;
   int? _selectedOption;
   int? _theirSelectedOption;
@@ -22,6 +24,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int _comboCount = 0;
   bool _showCelebration = false;
 
+  // Hero question intro state
+  bool _showIntro = true;
+  Timer? _introTimer;
+
+  // Animations
   late AnimationController _impactController;
   late Animation<double> _impactAnimation;
 
@@ -47,12 +54,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       TweenSequenceItem(tween: Tween(begin: 1.1, end: 0.95), weight: 35),
       TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.0), weight: 35),
     ]).animate(CurvedAnimation(parent: _impactController, curve: Curves.easeOut));
+
+    // Start first intro
+    _startIntroTimer();
   }
 
   @override
   void dispose() {
+    _introTimer?.cancel();
     _impactController.dispose();
     super.dispose();
+  }
+
+  void _startIntroTimer() {
+    _introTimer?.cancel();
+    _introTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => _showIntro = false);
+      }
+    });
   }
 
   bool get _isComplete => _currentRound >= 5;
@@ -64,7 +84,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _handleOptionSelected(int index) {
-    if (_selectedOption != null || _waitingForThem || _isComplete) return;
+    if (_selectedOption != null || _waitingForThem || _isComplete || _showIntro) return;
 
     setState(() {
       _selectedOption = index;
@@ -93,6 +113,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           if (_isComplete) {
             _showCelebration = true;
             _impactController.forward(from: 0);
+          } else {
+            // Start intro for next round
+            _showIntro = true;
+            _startIntroTimer();
           }
         });
       });
@@ -108,7 +132,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _vibeScore = 0;
       _comboCount = 0;
       _showCelebration = false;
+      _showIntro = true;
     });
+    _startIntroTimer();
   }
 
   @override
@@ -118,14 +144,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       body: SafeArea(
         child: Stack(
           children: [
-            // Main content
+            // Main game content
             Column(
               children: [
                 const SizedBox(height: 8),
                 _buildTopBar(),
                 const SizedBox(height: 12),
 
-                // RESTORED: Simple progress bar
+                // Progress bar (stable, doesn't flicker)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: MatchProgressBar(
@@ -135,19 +161,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
 
                 const SizedBox(height: 16),
+
+                // Photo cards
                 _buildPhotoCards(),
+
                 const SizedBox(height: 16),
 
+                // Game content area
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _isComplete ? _buildComplete() : _buildGameRound(),
-                  ),
+                  child: _isComplete
+                      ? _buildComplete()
+                      : _buildGameContent(),
                 ),
 
                 const SizedBox(height: 12),
               ],
             ),
+
+            // Hero question intro overlay
+            if (_showIntro && !_isComplete)
+              _buildHeroQuestionOverlay(),
 
             // Euphoria celebration
             Positioned.fill(
@@ -164,6 +197,207 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  // ==================== HERO QUESTION OVERLAY ====================
+  Widget _buildHeroQuestionOverlay() {
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 400),
+      opacity: _showIntro ? 1.0 : 0.0,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        child: Container(
+          color: AppTheme.deepPurple.withValues(alpha: 0.7),
+          child: Center(
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.8, end: 1.0),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutBack,
+              builder: (context, scale, child) {
+                return Transform.scale(
+                  scale: scale,
+                  child: child,
+                );
+              },
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 500),
+                builder: (context, opacity, child) {
+                  return Opacity(opacity: opacity, child: child);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+                    decoration: BoxDecoration(
+                      color: AppTheme.midPurple.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: AppTheme.crystalCyan.withValues(alpha: 0.5),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.crystalCyan.withValues(alpha: 0.3),
+                          blurRadius: 30,
+                          spreadRadius: 5,
+                        ),
+                        BoxShadow(
+                          color: AppTheme.crystalPink.withValues(alpha: 0.2),
+                          blurRadius: 40,
+                          spreadRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'ROUND ${_currentRound + 1}',
+                          style: TextStyle(
+                            color: AppTheme.crystalCyan.withValues(alpha: 0.8),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 3,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _currentRoundData['prompt'],
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==================== GAME CONTENT (after intro) ====================
+  Widget _buildGameContent() {
+    final data = _currentRoundData;
+    final options = data['options'] as List<String>;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          // Round indicator + combo
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.midPurple,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'ROUND ${_currentRound + 1}/5',
+                  style: const TextStyle(color: AppTheme.crystalCyan, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+              if (_comboCount > 1)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [AppTheme.crystalGold, AppTheme.crystalPink]),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.local_fire_department, color: Colors.white, size: 12),
+                      const SizedBox(width: 3),
+                      Text('${_comboCount}x', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Question (animates in from center)
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 400),
+            opacity: _showIntro ? 0.0 : 1.0,
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOut,
+              offset: _showIntro ? const Offset(0, 0.2) : Offset.zero,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.midPurple,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.crystalCyan.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      data['prompt'],
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    if (_waitingForThem) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.crystalPink)),
+                          const SizedBox(width: 6),
+                          const Text('Their turn...', style: TextStyle(color: AppTheme.crystalPink, fontSize: 11)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Word buttons (fade in after intro)
+          Expanded(
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 500),
+              opacity: _showIntro ? 0.0 : 1.0,
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children: List.generate(options.length, (i) {
+                    return FrostedGlassButton(
+                      text: options[i],
+                      isSelected: _selectedOption == i,
+                      isTheirSelection: _theirSelectedOption == i,
+                      colorIndex: i,
+                      floatSpeed: 0.9 + (i * 0.08),
+                      onPressed: () => _handleOptionSelected(i),
+                    );
+                  }),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== TOP BAR ====================
   Widget _buildTopBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -172,18 +406,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppTheme.crystalCyan, AppTheme.crystalPink],
-              ),
+              gradient: const LinearGradient(colors: [AppTheme.crystalCyan, AppTheme.crystalPink]),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
           ),
           const SizedBox(width: 10),
-          const Text(
-            'MatchMake!',
-            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          const Text('MatchMake!', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -196,10 +425,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               children: [
                 const Icon(Icons.bolt, color: AppTheme.crystalGold, size: 16),
                 const SizedBox(width: 4),
-                Text(
-                  '$_vibeScore',
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                ),
+                Text('$_vibeScore', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -208,6 +434,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  // ==================== PHOTO CARDS ====================
   Widget _buildPhotoCards() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -221,6 +448,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           },
           child: Row(
             children: [
+              // ME photo
               Expanded(
                 child: Transform.rotate(
                   angle: -5 * math.pi / 180,
@@ -228,6 +456,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
               const SizedBox(width: 16),
+              // THEM photo (single instance, no duplicates)
               Expanded(
                 child: Transform.rotate(
                   angle: 5 * math.pi / 180,
@@ -250,17 +479,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withValues(alpha: 0.6), width: 2.5),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-          if (_isComplete)
-            BoxShadow(
-              color: color.withValues(alpha: 0.4),
-              blurRadius: 14,
-              spreadRadius: 2,
-            ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+          if (_isComplete) BoxShadow(color: color.withValues(alpha: 0.4), blurRadius: 14, spreadRadius: 2),
         ],
       ),
       child: ClipRRect(
@@ -268,33 +488,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         child: Stack(
           fit: StackFit.expand,
           children: [
+            // Photo background
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    color.withValues(alpha: 0.2),
-                    AppTheme.midPurple,
-                    AppTheme.deepPurple,
-                  ],
+                  colors: [color.withValues(alpha: 0.2), AppTheme.midPurple, AppTheme.deepPurple],
                 ),
               ),
               child: Center(
-                child: Icon(
-                  Icons.person,
-                  size: 50,
-                  color: color.withValues(alpha: isMe ? 0.5 : 0.3),
-                ),
+                child: Icon(Icons.person, size: 50, color: color.withValues(alpha: isMe ? 0.5 : 0.3)),
               ),
             ),
 
+            // Blur for THEM
             if (!isMe && blurAmount > 0)
               BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: blurAmount, sigmaY: blurAmount),
                 child: Container(color: Colors.transparent),
               ),
 
+            // Percentage badge
             Positioned(
               bottom: 8,
               left: 0,
@@ -315,6 +530,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
             ),
 
+            // Lock icon
             if (!isMe && _currentRound == 0)
               Center(
                 child: Container(
@@ -332,104 +548,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildGameRound() {
-    final data = _currentRoundData;
-    final options = data['options'] as List<String>;
-
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.midPurple,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                'ROUND ${_currentRound + 1}/5',
-                style: const TextStyle(color: AppTheme.crystalCyan, fontSize: 11, fontWeight: FontWeight.bold),
-              ),
-            ),
-            if (_comboCount > 1)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [AppTheme.crystalGold, AppTheme.crystalPink]),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.local_fire_department, color: Colors.white, size: 12),
-                    const SizedBox(width: 3),
-                    Text('${_comboCount}x', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-          ],
-        ),
-
-        const SizedBox(height: 12),
-
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppTheme.midPurple,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppTheme.crystalCyan.withValues(alpha: 0.3)),
-          ),
-          child: Column(
-            children: [
-              Text(
-                data['prompt'],
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              if (_waitingForThem) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.crystalPink)),
-                    const SizedBox(width: 6),
-                    const Text('Their turn...', style: TextStyle(color: AppTheme.crystalPink, fontSize: 11)),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 14),
-
-        Expanded(
-          child: SingleChildScrollView(
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              alignment: WrapAlignment.center,
-              children: List.generate(options.length, (i) {
-                return FrostedGlassButton(
-                  text: options[i],
-                  isSelected: _selectedOption == i,
-                  isTheirSelection: _theirSelectedOption == i,
-                  colorIndex: i,
-                  floatSpeed: 0.9 + (i * 0.08),
-                  onPressed: () => _handleOptionSelected(i),
-                );
-              }),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
+  // ==================== COMPLETE ====================
   Widget _buildComplete() {
     return Center(
       child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
@@ -452,10 +575,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: const Icon(Icons.auto_awesome, color: Colors.white, size: 40),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'MATCHED!',
-                style: TextStyle(color: AppTheme.crystalCyan, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 2),
-              ),
+              const Text('MATCHED!', style: TextStyle(color: AppTheme.crystalCyan, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 2)),
               const SizedBox(height: 12),
               Text('Vibe Score: $_vibeScore', style: const TextStyle(color: Colors.white, fontSize: 16)),
               const SizedBox(height: 20),
