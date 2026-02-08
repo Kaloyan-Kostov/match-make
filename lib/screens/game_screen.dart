@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/frosted_glass_button.dart';
-import '../widgets/glowing_orb.dart';
+import '../widgets/match_progress_bar.dart';
 import '../widgets/euphoria_celebration.dart';
 
 class GameScreen extends StatefulWidget {
@@ -14,7 +14,6 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
-  // Game state
   int _currentRound = 0;
   int? _selectedOption;
   int? _theirSelectedOption;
@@ -23,7 +22,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int _comboCount = 0;
   bool _showCelebration = false;
 
-  // Photo scale animation for "impact" effect
   late AnimationController _impactController;
   late Animation<double> _impactAnimation;
 
@@ -41,13 +39,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _impactController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
     _impactAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.08), weight: 30),
-      TweenSequenceItem(tween: Tween(begin: 1.08, end: 0.97), weight: 35),
-      TweenSequenceItem(tween: Tween(begin: 0.97, end: 1.0), weight: 35),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.1), weight: 30),
+      TweenSequenceItem(tween: Tween(begin: 1.1, end: 0.95), weight: 35),
+      TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.0), weight: 35),
     ]).animate(CurvedAnimation(parent: _impactController, curve: Curves.easeOut));
   }
 
@@ -57,9 +55,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // Progress: strictly clamped 0.0 to 0.5 for each side
-  double get _myProgressFactor => (_currentRound / 10.0).clamp(0.0, 0.5);
-  double get _theirProgressFactor => (_currentRound / 10.0).clamp(0.0, 0.5);
   bool get _isComplete => _currentRound >= 5;
   int get _revealPercent => (_currentRound * 20).clamp(0, 100);
 
@@ -78,7 +73,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       _comboCount++;
     });
 
-    // Simulate THEM selecting
     Future.delayed(Duration(milliseconds: 300 + _random.nextInt(400)), () {
       if (!mounted) return;
       setState(() {
@@ -89,7 +83,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         }
       });
 
-      // Move to next round
       Future.delayed(const Duration(milliseconds: 400), () {
         if (!mounted) return;
         setState(() {
@@ -97,7 +90,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           _selectedOption = null;
           _theirSelectedOption = null;
 
-          // Trigger celebration when complete
           if (_isComplete) {
             _showCelebration = true;
             _impactController.forward(from: 0);
@@ -127,38 +119,37 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         child: Stack(
           children: [
             // Main content
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                    child: IntrinsicHeight(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 8),
-                            _buildTopBar(),
-                            const SizedBox(height: 12),
-                            _buildProgressBar(),
-                            const SizedBox(height: 16),
-                            _buildPhotoCards(),
-                            const SizedBox(height: 16),
-                            Expanded(
-                              child: _isComplete ? _buildComplete() : _buildGameRound(),
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
-                      ),
-                    ),
+            Column(
+              children: [
+                const SizedBox(height: 8),
+                _buildTopBar(),
+                const SizedBox(height: 12),
+
+                // RESTORED: Simple progress bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: MatchProgressBar(
+                    myProgress: _currentRound,
+                    theirProgress: _currentRound,
                   ),
-                );
-              },
+                ),
+
+                const SizedBox(height: 16),
+                _buildPhotoCards(),
+                const SizedBox(height: 16),
+
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _isComplete ? _buildComplete() : _buildGameRound(),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+              ],
             ),
 
-            // Euphoria celebration overlay
+            // Euphoria celebration
             Positioned.fill(
               child: EuphoriaCelebration(
                 trigger: _showCelebration,
@@ -173,193 +164,78 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ==================== TOP BAR ====================
   Widget _buildTopBar() {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppTheme.crystalCyan, AppTheme.crystalPink],
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
-        ),
-        const SizedBox(width: 10),
-        const Text(
-          'MatchMake!',
-          style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppTheme.midPurple,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.crystalGold.withValues(alpha: 0.5)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.bolt, color: AppTheme.crystalGold, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                '$_vibeScore',
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ==================== PROGRESS BAR (FIXED HEIGHT: 80px) ====================
-  Widget _buildProgressBar() {
-    return SizedBox(
-      height: 80,
-      child: Stack(
-        alignment: Alignment.center,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
         children: [
-          // Progress track (positioned between avatars)
-          Positioned(
-            left: 55,
-            right: 55,
-            child: Container(
-              height: 16,
-              decoration: BoxDecoration(
-                color: AppTheme.deepPurple,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.softPurple, width: 1.5),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppTheme.crystalCyan, AppTheme.crystalPink],
               ),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final trackWidth = constraints.maxWidth;
-                  // Clamped widths: max 50% each side
-                  final myWidth = (trackWidth * _myProgressFactor).clamp(0.0, trackWidth * 0.5);
-                  final theirWidth = (trackWidth * _theirProgressFactor).clamp(0.0, trackWidth * 0.5);
-
-                  return Stack(
-                    children: [
-                      // MY progress (left to center)
-                      Positioned(
-                        left: 2,
-                        top: 2,
-                        bottom: 2,
-                        width: myWidth - 2,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: AppTheme.crystalCyan,
-                            borderRadius: BorderRadius.circular(6),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.crystalCyan.withValues(alpha: 0.5),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // THEIR progress (right to center)
-                      Positioned(
-                        right: 2,
-                        top: 2,
-                        bottom: 2,
-                        width: theirWidth - 2,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: AppTheme.crystalPink,
-                            borderRadius: BorderRadius.circular(6),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.crystalPink.withValues(alpha: 0.5),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'MatchMake!',
+            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.midPurple,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.crystalGold.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.bolt, color: AppTheme.crystalGold, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  '$_vibeScore',
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
           ),
-
-          // YOU avatar (left)
-          Positioned(
-            left: 0,
-            child: _buildAvatar(label: 'YOU', color: AppTheme.crystalCyan),
-          ),
-
-          // THEM avatar (right)
-          Positioned(
-            right: 0,
-            child: _buildAvatar(label: 'THEM', color: AppTheme.crystalPink),
-          ),
-
-          // Central Glowing Orb
-          GlowingOrb(isComplete: _isComplete, size: 50),
         ],
       ),
     );
   }
 
-  Widget _buildAvatar({required String label, required Color color}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppTheme.midPurple,
-            border: Border.all(color: color, width: 2.5),
-            boxShadow: [
-              BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8),
+  Widget _buildPhotoCards() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        height: 150,
+        child: AnimatedBuilder(
+          animation: _impactAnimation,
+          builder: (context, child) {
+            final scale = _isComplete ? _impactAnimation.value : 1.0;
+            return Transform.scale(scale: scale, child: child);
+          },
+          child: Row(
+            children: [
+              Expanded(
+                child: Transform.rotate(
+                  angle: -5 * math.pi / 180,
+                  child: _buildPhotoCard(isMe: true),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Transform.rotate(
+                  angle: 5 * math.pi / 180,
+                  child: _buildPhotoCard(isMe: false),
+                ),
+              ),
             ],
           ),
-          child: Icon(Icons.person, color: color, size: 22),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
-
-  // ==================== PHOTO CARDS (FIXED HEIGHT: 150px) ====================
-  Widget _buildPhotoCards() {
-    return SizedBox(
-      height: 150,
-      child: AnimatedBuilder(
-        animation: _impactAnimation,
-        builder: (context, child) {
-          final scale = _isComplete ? _impactAnimation.value : 1.0;
-          return Transform.scale(scale: scale, child: child);
-        },
-        child: Row(
-          children: [
-            // ME photo (left, tilted -5°)
-            Expanded(
-              child: Transform.rotate(
-                angle: -5 * math.pi / 180,
-                child: _buildPhotoCard(isMe: true),
-              ),
-            ),
-            const SizedBox(width: 16),
-            // THEM photo (right, tilted +5°)
-            Expanded(
-              child: Transform.rotate(
-                angle: 5 * math.pi / 180,
-                child: _buildPhotoCard(isMe: false),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -372,17 +248,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.7), width: 2.5),
+        border: Border.all(color: color.withValues(alpha: 0.6), width: 2.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
           if (_isComplete)
             BoxShadow(
               color: color.withValues(alpha: 0.4),
-              blurRadius: 16,
+              blurRadius: 14,
               spreadRadius: 2,
             ),
         ],
@@ -392,14 +268,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Photo background
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    color.withValues(alpha: 0.25),
+                    color.withValues(alpha: 0.2),
                     AppTheme.midPurple,
                     AppTheme.deepPurple,
                   ],
@@ -408,55 +283,47 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               child: Center(
                 child: Icon(
                   Icons.person,
-                  size: 55,
+                  size: 50,
                   color: color.withValues(alpha: isMe ? 0.5 : 0.3),
                 ),
               ),
             ),
 
-            // Blur for THEM only
             if (!isMe && blurAmount > 0)
               BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: blurAmount, sigmaY: blurAmount),
                 child: Container(color: Colors.transparent),
               ),
 
-            // Percentage label
             Positioned(
               bottom: 8,
               left: 0,
               right: 0,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppTheme.deepPurple.withValues(alpha: 0.85),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: color.withValues(alpha: 0.5)),
                   ),
                   child: Text(
                     isMe ? '100%' : '$_revealPercent%',
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
             ),
 
-            // Lock icon when 0%
             if (!isMe && _currentRound == 0)
               Center(
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppTheme.deepPurple.withValues(alpha: 0.75),
+                    color: AppTheme.deepPurple.withValues(alpha: 0.7),
                     shape: BoxShape.circle,
-                    border: Border.all(color: color.withValues(alpha: 0.5)),
                   ),
-                  child: Icon(Icons.lock, color: color, size: 26),
+                  child: Icon(Icons.lock, color: color, size: 24),
                 ),
               ),
           ],
@@ -465,14 +332,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  // ==================== GAME ROUND ====================
   Widget _buildGameRound() {
     final data = _currentRoundData;
     final options = data['options'] as List<String>;
 
     return Column(
       children: [
-        // Round + Combo
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -484,44 +349,35 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               ),
               child: Text(
                 'ROUND ${_currentRound + 1}/5',
-                style: const TextStyle(
-                  color: AppTheme.crystalCyan,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(color: AppTheme.crystalCyan, fontSize: 11, fontWeight: FontWeight.bold),
               ),
             ),
             if (_comboCount > 1)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppTheme.crystalGold, AppTheme.crystalPink],
-                  ),
-                  borderRadius: BorderRadius.circular(10),
+                  gradient: const LinearGradient(colors: [AppTheme.crystalGold, AppTheme.crystalPink]),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.local_fire_department, color: Colors.white, size: 14),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${_comboCount}x',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
+                    const Icon(Icons.local_fire_department, color: Colors.white, size: 12),
+                    const SizedBox(width: 3),
+                    Text('${_comboCount}x', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
           ],
         ),
-        const SizedBox(height: 14),
 
-        // Prompt
+        const SizedBox(height: 12),
+
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: AppTheme.midPurple,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppTheme.crystalCyan.withValues(alpha: 0.3)),
           ),
           child: Column(
@@ -529,126 +385,92 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               Text(
                 data['prompt'],
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 19,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               ),
               if (_waitingForThem) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppTheme.crystalPink,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Their turn...',
-                      style: TextStyle(color: AppTheme.crystalPink, fontSize: 12),
-                    ),
+                    const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.crystalPink)),
+                    const SizedBox(width: 6),
+                    const Text('Their turn...', style: TextStyle(color: AppTheme.crystalPink, fontSize: 11)),
                   ],
                 ),
               ],
             ],
           ),
         ),
-        const SizedBox(height: 16),
 
-        // Word buttons
+        const SizedBox(height: 14),
+
         Expanded(
-          child: Wrap(
-            spacing: 10,
-            runSpacing: 12,
-            alignment: WrapAlignment.center,
-            children: List.generate(options.length, (i) {
-              return FrostedGlassButton(
-                text: options[i],
-                isSelected: _selectedOption == i,
-                isTheirSelection: _theirSelectedOption == i,
-                colorIndex: i,
-                floatSpeed: 0.9 + (i * 0.08),
-                onPressed: () => _handleOptionSelected(i),
-              );
-            }),
+          child: SingleChildScrollView(
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: List.generate(options.length, (i) {
+                return FrostedGlassButton(
+                  text: options[i],
+                  isSelected: _selectedOption == i,
+                  isTheirSelection: _theirSelectedOption == i,
+                  colorIndex: i,
+                  floatSpeed: 0.9 + (i * 0.08),
+                  onPressed: () => _handleOptionSelected(i),
+                );
+              }),
+            ),
           ),
         ),
       ],
     );
   }
 
-  // ==================== COMPLETE SCREEN ====================
   Widget _buildComplete() {
     return Center(
-      child: Container(
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            colors: [
-              AppTheme.crystalCyan.withValues(alpha: 0.15),
-              AppTheme.deepPurple,
-            ],
-            radius: 1.2,
+      child: SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              colors: [AppTheme.crystalCyan.withValues(alpha: 0.15), AppTheme.deepPurple],
+              radius: 1.2,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.crystalCyan.withValues(alpha: 0.4), width: 2),
           ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppTheme.crystalCyan.withValues(alpha: 0.4), width: 2),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppTheme.crystalGold, AppTheme.crystalPink, AppTheme.crystalCyan],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [AppTheme.crystalGold, AppTheme.crystalPink, AppTheme.crystalCyan]),
+                  shape: BoxShape.circle,
                 ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.crystalGold.withValues(alpha: 0.5),
-                    blurRadius: 20,
-                    spreadRadius: 5,
-                  ),
-                ],
+                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 40),
               ),
-              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 44),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              '✨ MATCHED! ✨',
-              style: TextStyle(
-                color: AppTheme.crystalCyan,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
+              const SizedBox(height: 16),
+              const Text(
+                'MATCHED!',
+                style: TextStyle(color: AppTheme.crystalCyan, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 2),
               ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'Vibe Score: $_vibeScore',
-              style: const TextStyle(color: Colors.white, fontSize: 18),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _resetGame,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.crystalCyan,
-                foregroundColor: AppTheme.deepPurple,
-                padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              const SizedBox(height: 12),
+              Text('Vibe Score: $_vibeScore', style: const TextStyle(color: Colors.white, fontSize: 16)),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _resetGame,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.crystalCyan,
+                  foregroundColor: AppTheme.deepPurple,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('PLAY AGAIN', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
-              child: const Text(
-                'PLAY AGAIN',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
