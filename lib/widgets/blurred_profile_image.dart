@@ -23,27 +23,32 @@ class BlurredProfileImage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 300,
+      height: 280,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: AppTheme.mintGreen.withValues(alpha: 0.3),
-          width: 2,
+          color: AppTheme.coralPink.withValues(alpha: 0.4),
+          width: 3,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.mintGreen.withValues(alpha: 0.1),
+            color: AppTheme.pillShadow.withValues(alpha: 0.6),
+            offset: const Offset(0, 6),
+            blurRadius: 16,
+          ),
+          BoxShadow(
+            color: AppTheme.coralPink.withValues(alpha: 0.15),
             blurRadius: 20,
-            spreadRadius: 5,
+            spreadRadius: 2,
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(25),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Placeholder image (gradient for now)
+            // Placeholder image (warm gradient)
             _buildPlaceholderImage(),
 
             // Blur overlay
@@ -54,7 +59,7 @@ class BlurredProfileImage extends StatelessWidget {
                   sigmaY: blurAmount,
                 ),
                 child: Container(
-                  color: AppTheme.darkNavy.withValues(alpha: 0.1),
+                  color: AppTheme.deepPlum.withValues(alpha: 0.15),
                 ),
               ),
 
@@ -66,32 +71,41 @@ class BlurredProfileImage extends StatelessWidget {
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
+                    horizontal: 18,
+                    vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkNavy.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(20),
+                    color: AppTheme.deepPlum.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: AppTheme.mintGreen.withValues(alpha: 0.5),
-                      width: 1,
+                      color: AppTheme.coralPink.withValues(alpha: 0.5),
+                      width: 2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.pillShadow.withValues(alpha: 0.4),
+                        offset: const Offset(0, 3),
+                        blurRadius: 6,
+                      ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         revealProgress == 5
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                        color: AppTheme.mintGreen,
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: revealProgress == 5
+                            ? AppTheme.heartRed
+                            : AppTheme.coralPink,
                         size: 18,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         '$revealPercentage% Revealed',
                         style: const TextStyle(
-                          color: AppTheme.mintGreen,
+                          color: AppTheme.cream,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -106,20 +120,39 @@ class BlurredProfileImage extends StatelessWidget {
             if (revealProgress == 0)
               Center(
                 child: Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: AppTheme.darkNavy.withValues(alpha: 0.7),
+                    color: AppTheme.deepPlum.withValues(alpha: 0.8),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppTheme.mintGreen.withValues(alpha: 0.5),
-                      width: 2,
+                      color: AppTheme.coralPink.withValues(alpha: 0.5),
+                      width: 3,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.heartRed.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        spreadRadius: 4,
+                      ),
+                    ],
                   ),
                   child: const Icon(
-                    Icons.lock_outline,
-                    color: AppTheme.mintGreen,
-                    size: 40,
+                    Icons.favorite,
+                    color: AppTheme.coralPink,
+                    size: 44,
                   ),
+                ),
+              ),
+
+            // Sparkle effect when fully revealed
+            if (revealProgress == 5)
+              Positioned(
+                top: 20,
+                right: 20,
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: AppTheme.heartRed.withValues(alpha: 0.8),
+                  size: 28,
                 ),
               ),
           ],
@@ -129,24 +162,24 @@ class BlurredProfileImage extends StatelessWidget {
   }
 
   Widget _buildPlaceholderImage() {
-    // Using a gradient as placeholder - replace with actual image later
+    // Warm gradient placeholder
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.lightNavy,
-            AppTheme.darkNavy.withValues(alpha: 0.8),
-            const Color(0xFF1A365D),
+            AppTheme.softPlum,
+            AppTheme.warmBerry,
+            AppTheme.deepPlum.withValues(alpha: 0.9),
           ],
         ),
       ),
       child: Center(
         child: Icon(
           Icons.person,
-          size: 120,
-          color: AppTheme.slate.withValues(alpha: 0.5),
+          size: 100,
+          color: AppTheme.mutedText.withValues(alpha: 0.4),
         ),
       ),
     );

@@ -27,32 +27,39 @@ class _GameButtonState extends State<GameButton> {
   Color get _buttonColor {
     if (widget.showResult && widget.isSelected) {
       return widget.isCorrect
-          ? AppTheme.mintGreen
-          : const Color(0xFFFF6B6B);
+          ? AppTheme.coralPink
+          : const Color(0xFFE57373);
     }
     if (widget.isSelected) {
-      return AppTheme.mintGreen;
+      return AppTheme.coralPink;
     }
-    return AppTheme.lightNavy;
+    return AppTheme.softPlum;
   }
 
   Color get _shadowColor {
     if (widget.showResult && widget.isSelected) {
       return widget.isCorrect
-          ? const Color(0xFF3DA88A)
-          : const Color(0xFFCC4444);
+          ? const Color(0xFFB85A50)
+          : const Color(0xFFAF4448);
     }
     if (widget.isSelected) {
-      return const Color(0xFF3DA88A);
+      return const Color(0xFFB85A50);
     }
-    return AppTheme.buttonShadow;
+    return AppTheme.pillShadow;
   }
 
   Color get _textColor {
     if (widget.isSelected || (widget.showResult && widget.isSelected)) {
-      return AppTheme.darkNavy;
+      return AppTheme.deepPlum;
     }
-    return AppTheme.white;
+    return AppTheme.cream;
+  }
+
+  Color get _borderColor {
+    if (widget.isSelected) {
+      return AppTheme.coralPink;
+    }
+    return AppTheme.lightPlum;
   }
 
   @override
@@ -75,11 +82,9 @@ class _GameButtonState extends State<GameButton> {
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           decoration: BoxDecoration(
             color: _buttonColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: widget.isSelected
-                  ? AppTheme.mintGreen
-                  : AppTheme.mintGreen.withValues(alpha: 0.3),
+              color: _borderColor,
               width: 2,
             ),
             boxShadow: _isPressed

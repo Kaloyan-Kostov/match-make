@@ -25,198 +25,222 @@ class MatchProgressBar extends StatefulWidget {
 
 class _MatchProgressBarState extends State<MatchProgressBar>
     with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+  late AnimationController _heartBeatController;
+  late Animation<double> _heartBeatAnimation;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+    _heartBeatController = AnimationController(
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    _heartBeatAnimation = Tween<double>(begin: 1.0, end: 1.25).animate(
+      CurvedAnimation(
+        parent: _heartBeatController,
+        curve: Curves.easeInOut,
+      ),
     );
+
+    // Start beating if already complete
+    if (widget.isComplete) {
+      _heartBeatController.repeat(reverse: true);
+    }
   }
 
   @override
   void didUpdateWidget(MatchProgressBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isComplete && !oldWidget.isComplete) {
-      _pulseController.repeat(reverse: true);
-    } else if (!widget.isComplete) {
-      _pulseController.stop();
-      _pulseController.reset();
+      _heartBeatController.repeat(reverse: true);
+    } else if (!widget.isComplete && oldWidget.isComplete) {
+      _heartBeatController.stop();
+      _heartBeatController.reset();
     }
   }
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _heartBeatController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      child: Column(
         children: [
-          // ME avatar + label
-          _buildAvatarWithLabel(
-            label: 'ME',
-            isMe: true,
-          ),
-          const SizedBox(width: 12),
+          // Main progress row with avatars
+          Row(
+            children: [
+              // ME avatar (far left)
+              _buildAvatar(isMe: true),
+              const SizedBox(width: 8),
 
-          // Dual progress bar
-          Expanded(
-            child: _buildDualProgressBar(),
-          ),
+              // Thick dual progress bar with heart
+              Expanded(
+                child: _buildLiquidProgressBar(),
+              ),
 
-          const SizedBox(width: 12),
-          // THEM avatar + label
-          _buildAvatarWithLabel(
-            label: 'THEM',
-            isMe: false,
+              const SizedBox(width: 8),
+              // THEM avatar (far right)
+              _buildAvatar(isMe: false),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Labels below
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildLabel('ME'),
+                _buildLabel('THEM'),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAvatarWithLabel({
-    required String label,
-    required bool isMe,
-  }) {
-    return Column(
-      children: [
-        // Avatar
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppTheme.mintGreen.withValues(alpha: 0.5),
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.mintGreen.withValues(alpha: 0.2),
-                blurRadius: 8,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: ClipOval(
-            child: isMe
-                ? _buildMyAvatar()
-                : _buildTheirAvatar(),
-          ),
+  Widget _buildAvatar({required bool isMe}) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppTheme.warmBerry,
+        border: Border.all(
+          color: isMe ? AppTheme.coralPink : AppTheme.softPlum,
+          width: 3,
         ),
-        const SizedBox(height: 6),
-        // Label
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AppTheme.lightNavy,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: AppTheme.mintGreen.withValues(alpha: 0.3),
-              width: 1,
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: (isMe ? AppTheme.coralPink : AppTheme.softPlum)
+                .withValues(alpha: 0.3),
+            blurRadius: 8,
+            spreadRadius: 2,
           ),
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: AppTheme.mintGreen,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.0,
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
+      child: ClipOval(
+        child: isMe ? _buildMyAvatar() : _buildTheirAvatar(),
+      ),
     );
   }
 
   Widget _buildMyAvatar() {
-    // Fully revealed avatar for ME
     return Container(
-      color: AppTheme.lightNavy,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.coralPink.withValues(alpha: 0.3),
+            AppTheme.warmBerry,
+          ],
+        ),
+      ),
       child: const Center(
         child: Icon(
           Icons.person,
-          color: AppTheme.mintGreen,
-          size: 24,
+          color: AppTheme.coralPink,
+          size: 28,
         ),
       ),
     );
   }
 
   Widget _buildTheirAvatar() {
-    // Blurred avatar for THEM based on reveal progress
-    final blurAmount = widget.theirBlurLevel * 2.0;
     return Stack(
       fit: StackFit.expand,
       children: [
         Container(
-          color: AppTheme.lightNavy,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppTheme.softPlum.withValues(alpha: 0.5),
+                AppTheme.warmBerry,
+              ],
+            ),
+          ),
           child: Center(
             child: Icon(
               Icons.person,
-              color: AppTheme.slate.withValues(alpha: 0.5),
-              size: 24,
+              color: AppTheme.mutedText.withValues(alpha: 0.6),
+              size: 28,
             ),
           ),
         ),
-        if (blurAmount > 0)
-          Container(
-            decoration: BoxDecoration(
-              color: AppTheme.darkNavy.withValues(alpha: 0.3 + (widget.theirBlurLevel * 0.1)),
-            ),
+        // Blur overlay
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.deepPlum
+                .withValues(alpha: 0.2 + (widget.theirBlurLevel * 0.12)),
           ),
+        ),
       ],
     );
   }
 
-  Widget _buildDualProgressBar() {
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: AppTheme.mutedText,
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.5,
+      ),
+    );
+  }
+
+  Widget _buildLiquidProgressBar() {
     return Container(
-      height: 14,
+      height: 24,
       decoration: BoxDecoration(
-        color: AppTheme.lightNavy,
-        borderRadius: BorderRadius.circular(7),
+        color: AppTheme.warmBerry,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.mintGreen.withValues(alpha: 0.2),
-          width: 1,
+          color: AppTheme.softPlum.withValues(alpha: 0.5),
+          width: 2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.pillShadow.withValues(alpha: 0.5),
+            offset: const Offset(0, 3),
+            blurRadius: 6,
+          ),
+        ],
       ),
       child: Stack(
         children: [
-          // MY progress (left to center)
+          // MY progress - liquid fill from left
           Align(
             alignment: Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: (widget.myProgress / 5) * 0.5, // Half width max
+            child: AnimatedFractionallySizedBox(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOut,
+              widthFactor: (widget.myProgress / 5) * 0.45,
               child: Container(
+                margin: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.mintGreen.withValues(alpha: 0.7),
-                      AppTheme.mintGreen,
+                      AppTheme.coralPink.withValues(alpha: 0.8),
+                      AppTheme.coralPink,
+                      AppTheme.heartRed.withValues(alpha: 0.9),
                     ],
                   ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(6),
-                    bottomLeft: Radius.circular(6),
-                  ),
+                  borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.mintGreen.withValues(alpha: 0.4),
+                      color: AppTheme.coralPink.withValues(alpha: 0.4),
                       blurRadius: 6,
-                      spreadRadius: 1,
                     ),
                   ],
                 ),
@@ -224,28 +248,28 @@ class _MatchProgressBarState extends State<MatchProgressBar>
             ),
           ),
 
-          // THEIR progress (right to center)
+          // THEIR progress - liquid fill from right
           Align(
             alignment: Alignment.centerRight,
-            child: FractionallySizedBox(
-              widthFactor: (widget.theirProgress / 5) * 0.5, // Half width max
+            child: AnimatedFractionallySizedBox(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOut,
+              widthFactor: (widget.theirProgress / 5) * 0.45,
               child: Container(
+                margin: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.mintGreen,
-                      AppTheme.mintGreen.withValues(alpha: 0.7),
+                      AppTheme.heartRed.withValues(alpha: 0.9),
+                      AppTheme.coralPink,
+                      AppTheme.coralPink.withValues(alpha: 0.8),
                     ],
                   ),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(6),
-                    bottomRight: Radius.circular(6),
-                  ),
+                  borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.mintGreen.withValues(alpha: 0.4),
+                      color: AppTheme.coralPink.withValues(alpha: 0.4),
                       blurRadius: 6,
-                      spreadRadius: 1,
                     ),
                   ],
                 ),
@@ -253,31 +277,28 @@ class _MatchProgressBarState extends State<MatchProgressBar>
             ),
           ),
 
-          // Animated Heart icon at center
+          // Big red pulsing heart in center
           Center(
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, child) => Transform.scale(
-                scale: widget.isComplete ? _pulseAnimation.value : 1.0,
-                child: child,
-              ),
+            child: ScaleTransition(
+              scale: _heartBeatAnimation,
               child: Container(
-                padding: const EdgeInsets.all(5),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: widget.isComplete
-                      ? AppTheme.mintGreen
-                      : AppTheme.darkNavy,
+                      ? AppTheme.heartRed
+                      : AppTheme.deepPlum,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppTheme.mintGreen,
-                    width: 2,
+                    color: AppTheme.heartRed,
+                    width: 3,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.mintGreen.withValues(
+                      color: AppTheme.heartRed.withValues(
                         alpha: widget.isComplete ? 0.6 : 0.3,
                       ),
-                      blurRadius: widget.isComplete ? 12 : 8,
+                      blurRadius: widget.isComplete ? 16 : 8,
                       spreadRadius: widget.isComplete ? 4 : 2,
                     ),
                   ],
@@ -285,15 +306,55 @@ class _MatchProgressBarState extends State<MatchProgressBar>
                 child: Icon(
                   Icons.favorite,
                   color: widget.isComplete
-                      ? AppTheme.darkNavy
-                      : AppTheme.mintGreen,
-                  size: 16,
+                      ? AppTheme.cream
+                      : AppTheme.heartRed,
+                  size: 24,
                 ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+// Animated version of FractionallySizedBox for smooth progress
+class AnimatedFractionallySizedBox extends ImplicitlyAnimatedWidget {
+  final double widthFactor;
+  final Widget child;
+
+  const AnimatedFractionallySizedBox({
+    super.key,
+    required this.widthFactor,
+    required this.child,
+    required super.duration,
+    super.curve,
+  });
+
+  @override
+  AnimatedFractionallySizedBoxState createState() =>
+      AnimatedFractionallySizedBoxState();
+}
+
+class AnimatedFractionallySizedBoxState
+    extends AnimatedWidgetBaseState<AnimatedFractionallySizedBox> {
+  Tween<double>? _widthFactor;
+
+  @override
+  void forEachTween(TweenVisitor<dynamic> visitor) {
+    _widthFactor = visitor(
+      _widthFactor,
+      widget.widthFactor,
+      (dynamic value) => Tween<double>(begin: value as double),
+    ) as Tween<double>?;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      widthFactor: _widthFactor?.evaluate(animation) ?? widget.widthFactor,
+      child: widget.child,
     );
   }
 }

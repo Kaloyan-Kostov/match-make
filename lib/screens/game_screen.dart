@@ -117,17 +117,29 @@ class _GameScreenState extends State<GameScreen> {
     final isGameComplete = _currentRound >= _gameRounds.length;
 
     return Scaffold(
-      backgroundColor: AppTheme.darkNavy,
+      backgroundColor: AppTheme.deepPlum,
       appBar: AppBar(
-        backgroundColor: AppTheme.darkNavy,
+        backgroundColor: AppTheme.deepPlum,
         elevation: 0,
-        title: const Text(
-          'MatchMake!',
-          style: TextStyle(
-            color: AppTheme.mintGreen,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.favorite,
+              color: AppTheme.heartRed,
+              size: 28,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'MatchMake!',
+              style: TextStyle(
+                color: AppTheme.cream,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
         ),
         centerTitle: true,
       ),
@@ -141,7 +153,7 @@ class _GameScreenState extends State<GameScreen> {
               theirBlurLevel: _theirBlurLevel,
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
             // Blurred profile image
             Padding(
@@ -149,7 +161,7 @@ class _GameScreenState extends State<GameScreen> {
               child: BlurredProfileImage(revealProgress: _myProgress),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // Game content
             Expanded(
@@ -177,63 +189,79 @@ class _GameScreenState extends State<GameScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Round ${_currentRound + 1} of ${_gameRounds.length}',
-              style: TextStyle(
-                color: AppTheme.mintGreen.withValues(alpha: 0.7),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.warmBerry,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'Round ${_currentRound + 1} of ${_gameRounds.length}',
+                style: TextStyle(
+                  color: AppTheme.coralPink.withValues(alpha: 0.9),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             if (_waitingForThem)
-              Row(
-                children: [
-                  SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppTheme.mintGreen.withValues(alpha: 0.7),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.warmBerry,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.coralPink.withValues(alpha: 0.7),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Waiting for them...',
-                    style: TextStyle(
-                      color: AppTheme.slate.withValues(alpha: 0.7),
-                      fontSize: 12,
+                    const SizedBox(width: 8),
+                    Text(
+                      'Their turn...',
+                      style: TextStyle(
+                        color: AppTheme.softCream.withValues(alpha: 0.8),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
           ],
         ),
 
-        const SizedBox(height: 8),
+        const SizedBox(height: 14),
 
         // Prompt
         Text(
           roundData['prompt'],
           style: const TextStyle(
-            color: AppTheme.white,
-            fontSize: 22,
+            color: AppTheme.cream,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
+            height: 1.3,
           ),
         ),
 
         const SizedBox(height: 20),
 
-        // Word grid (Wrap layout)
+        // Word cloud (Wrap layout with soft pills)
         Expanded(
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                  spacing: 12,
+                  runSpacing: 12,
                   children: List.generate(options.length, (index) {
-                    return _buildWordTag(
+                    return _buildWordPill(
                       text: options[index],
                       index: index,
                       isMySelection: _selectedOption == index,
@@ -255,53 +283,53 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildWordTag({
+  Widget _buildWordPill({
     required String text,
     required int index,
     required bool isMySelection,
     required bool isTheirSelection,
   }) {
-    Color bgColor = AppTheme.lightNavy;
-    Color textColor = AppTheme.white;
-    Color borderColor = AppTheme.mintGreen.withValues(alpha: 0.3);
+    Color bgColor = AppTheme.softPlum;
+    Color textColor = AppTheme.cream;
+    Color borderColor = AppTheme.lightPlum;
+    Color shadowColor = AppTheme.pillShadow;
 
     if (isMySelection) {
-      bgColor = AppTheme.mintGreen;
-      textColor = AppTheme.darkNavy;
-      borderColor = AppTheme.mintGreen;
+      bgColor = AppTheme.coralPink;
+      textColor = AppTheme.deepPlum;
+      borderColor = AppTheme.coralPink;
+      shadowColor = const Color(0xFFB85A50);
     }
 
     if (isTheirSelection && !isMySelection) {
-      borderColor = AppTheme.slate;
+      borderColor = AppTheme.mutedText;
     }
 
     return GestureDetector(
       onTap: _showResult ? null : () => _handleOptionSelected(index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(25),
+          borderRadius: BorderRadius.circular(28),
           border: Border.all(
             color: borderColor,
             width: 2,
           ),
-          boxShadow: isMySelection
-              ? [
-                  BoxShadow(
-                    color: AppTheme.mintGreen.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: AppTheme.buttonShadow,
-                    offset: const Offset(0, 3),
-                    blurRadius: 0,
-                  ),
-                ],
+          boxShadow: [
+            BoxShadow(
+              color: shadowColor,
+              offset: const Offset(0, 4),
+              blurRadius: 0,
+            ),
+            if (isMySelection)
+              BoxShadow(
+                color: AppTheme.coralPink.withValues(alpha: 0.3),
+                blurRadius: 12,
+                spreadRadius: 2,
+              ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -310,17 +338,18 @@ class _GameScreenState extends State<GameScreen> {
               text,
               style: TextStyle(
                 color: textColor,
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
               ),
             ),
-            // Show ghost icon for THEM's selection
+            // Show heart icon for THEM's selection
             if (isTheirSelection) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Icon(
-                Icons.person_outline,
+                isMySelection ? Icons.favorite : Icons.favorite_border,
                 size: 16,
-                color: isMySelection ? AppTheme.darkNavy : AppTheme.slate,
+                color: isMySelection ? AppTheme.deepPlum : AppTheme.mutedText,
               ),
             ],
           ],
@@ -335,32 +364,39 @@ class _GameScreenState extends State<GameScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.lightNavy,
-        borderRadius: BorderRadius.circular(16),
+        color: AppTheme.warmBerry,
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isMatch
-              ? AppTheme.mintGreen.withValues(alpha: 0.5)
-              : AppTheme.slate.withValues(alpha: 0.3),
-          width: 1,
+              ? AppTheme.heartRed.withValues(alpha: 0.5)
+              : AppTheme.softPlum,
+          width: 2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.pillShadow.withValues(alpha: 0.5),
+            offset: const Offset(0, 3),
+            blurRadius: 6,
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: isMatch
-                  ? AppTheme.mintGreen.withValues(alpha: 0.2)
-                  : AppTheme.slate.withValues(alpha: 0.1),
+                  ? AppTheme.heartRed.withValues(alpha: 0.2)
+                  : AppTheme.softPlum.withValues(alpha: 0.5),
               shape: BoxShape.circle,
             ),
             child: Icon(
               isMatch ? Icons.favorite : Icons.person_outline,
-              color: isMatch ? AppTheme.mintGreen : AppTheme.slate,
-              size: 20,
+              color: isMatch ? AppTheme.heartRed : AppTheme.mutedText,
+              size: 22,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,17 +404,17 @@ class _GameScreenState extends State<GameScreen> {
                 Text(
                   isMatch ? 'It\'s a match!' : 'They selected:',
                   style: TextStyle(
-                    color: isMatch ? AppTheme.mintGreen : AppTheme.slate,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    color: isMatch ? AppTheme.heartRed : AppTheme.mutedText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   options[_theirSelectedOption!],
                   style: const TextStyle(
-                    color: AppTheme.white,
-                    fontSize: 16,
+                    color: AppTheme.cream,
+                    fontSize: 17,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -386,10 +422,17 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
           if (isMatch)
-            Icon(
-              Icons.check_circle,
-              color: AppTheme.mintGreen,
-              size: 24,
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: AppTheme.heartRed.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.favorite,
+                color: AppTheme.heartRed,
+                size: 20,
+              ),
             ),
         ],
       ),
@@ -398,49 +441,81 @@ class _GameScreenState extends State<GameScreen> {
 
   Widget _buildGameComplete() {
     final isFullReveal = _myProgress == 5 && _theirProgress == 5;
+    final matchCount = _roundHistory
+        .where((r) => r['mySelection'] == r['theirSelection'])
+        .length;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          isFullReveal ? Icons.favorite : Icons.favorite_border,
-          color: AppTheme.mintGreen,
-          size: 64,
+        // Big heart icon
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppTheme.heartRed.withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            isFullReveal ? Icons.favorite : Icons.favorite_border,
+            color: AppTheme.heartRed,
+            size: 72,
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Text(
           isFullReveal ? 'Photo Revealed!' : 'Game Complete!',
           style: const TextStyle(
-            color: AppTheme.white,
-            fontSize: 28,
+            color: AppTheme.cream,
+            fontSize: 30,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Text(
-          'You revealed ${_myProgress * 20}% of the photo',
+          'You revealed ${_myProgress * 20}% of their photo',
           style: const TextStyle(
-            color: AppTheme.slate,
+            color: AppTheme.softCream,
             fontSize: 16,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
 
         // Match summary
-        if (_roundHistory.isNotEmpty) ...[
-          Text(
-            '${_roundHistory.where((r) => r['mySelection'] == r['theirSelection']).length} of ${_roundHistory.length} answers matched!',
-            style: TextStyle(
-              color: AppTheme.mintGreen.withValues(alpha: 0.8),
-              fontSize: 14,
+        if (_roundHistory.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.warmBerry,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.favorite,
+                  color: AppTheme.heartRed,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$matchCount of ${_roundHistory.length} answers matched!',
+                  style: TextStyle(
+                    color: AppTheme.coralPink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
 
-        const SizedBox(height: 32),
-        GameButton(
-          text: 'Play Again',
-          onPressed: _resetGame,
+        const SizedBox(height: 36),
+        SizedBox(
+          width: double.infinity,
+          child: GameButton(
+            text: 'Play Again',
+            onPressed: _resetGame,
+          ),
         ),
       ],
     );
