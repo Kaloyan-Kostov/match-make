@@ -1,10 +1,8 @@
-import 'dart:math';
+import 'dart:math' as math;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../widgets/match_progress_bar.dart';
-import '../widgets/dual_photo_display.dart';
 import '../widgets/frosted_glass_button.dart';
-import '../widgets/game_button.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -14,53 +12,51 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
-  int _myProgress = 0;
-  int _theirProgress = 0;
+  // Game state
   int _currentRound = 0;
   int? _selectedOption;
   int? _theirSelectedOption;
-  bool _showResult = false;
   bool _waitingForThem = false;
-  bool _isMyTurn = true;
-
-  // Game scoring
   int _vibeScore = 0;
   int _comboCount = 0;
-  DateTime? _lastSelectionTime;
 
-  final Random _random = Random();
+  final math.Random _random = math.Random();
 
-  late AnimationController _scorePopController;
-  late Animation<double> _scorePopAnimation;
+  // Animation controller for the central logo
+  late AnimationController _logoController;
+  late Animation<double> _logoAnimation;
 
   final List<Map<String, dynamic>> _gameRounds = [
-    {'prompt': 'The perfect first date is...', 'options': ['Adventure', 'Coffee', 'Dinner', 'Movies', 'Stargazing']},
+    {'prompt': 'The perfect first date is...', 'options': ['Adventure', 'Coffee', 'Dinner', 'Movies', 'Stars']},
     {'prompt': 'My ideal weekend involves...', 'options': ['Hiking', 'Netflix', 'Brunch', 'Gaming', 'Reading']},
     {'prompt': 'I value most in a partner...', 'options': ['Humor', 'Ambition', 'Kindness', 'Smarts', 'Loyalty']},
     {'prompt': 'My love language is...', 'options': ['Words', 'Touch', 'Gifts', 'Time', 'Acts']},
     {'prompt': 'In 5 years, I see myself...', 'options': ['Traveling', 'Settled', 'Growing', 'Exploring', 'Creating']},
   ];
 
-  final List<Map<String, int>> _roundHistory = [];
-
   @override
   void initState() {
     super.initState();
-    _scorePopController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+    _logoController = AnimationController(
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _scorePopAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.3), weight: 50),
-      TweenSequenceItem(tween: Tween(begin: 1.3, end: 1.0), weight: 50),
-    ]).animate(CurvedAnimation(parent: _scorePopController, curve: Curves.easeOut));
+    _logoAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(parent: _logoController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
-    _scorePopController.dispose();
+    _logoController.dispose();
     super.dispose();
   }
+
+  // Progress values (0.0 to 1.0)
+  double get _myProgress => _currentRound / 5.0;
+  double get _theirProgress => _currentRound / 5.0;
+  bool get _isComplete => _currentRound >= 5;
+  int get _revealPercent => (_currentRound * 20).clamp(0, 100);
 
   Map<String, dynamic> get _currentRoundData {
     if (_currentRound >= _gameRounds.length) return _gameRounds.last;
@@ -68,133 +64,93 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void _handleOptionSelected(int index) {
-    if (_showResult || _waitingForThem) return;
-
-    final now = DateTime.now();
-    int speedBonus = 0;
-    if (_lastSelectionTime != null) {
-      final elapsed = now.difference(_lastSelectionTime!).inMilliseconds;
-      if (elapsed < 2000) {
-        speedBonus = 50;
-        _comboCount++;
-      } else if (elapsed < 4000) {
-        speedBonus = 25;
-        _comboCount++;
-      } else {
-        _comboCount = 0;
-      }
-    }
-    _lastSelectionTime = now;
-
-    final points = 100 + speedBonus + (_comboCount * 10);
+    if (_selectedOption != null || _waitingForThem) return;
 
     setState(() {
       _selectedOption = index;
-      _showResult = true;
-      _myProgress = (_myProgress + 1).clamp(0, 5);
       _waitingForThem = true;
-      _isMyTurn = false;
-      _vibeScore += points;
+      _vibeScore += 100 + (_comboCount * 10);
+      _comboCount++;
     });
 
-    _scorePopController.forward(from: 0);
-
-    // Simulate THEM
-    Future.delayed(Duration(milliseconds: 400 + _random.nextInt(600)), () {
+    // Simulate THEM selecting
+    Future.delayed(Duration(milliseconds: 300 + _random.nextInt(500)), () {
       if (!mounted) return;
-
       setState(() {
-        _theirSelectedOption = _random.nextInt(_currentRoundData['options'].length);
-        _theirProgress = (_theirProgress + 1).clamp(0, 5);
+        _theirSelectedOption = _random.nextInt(5);
         _waitingForThem = false;
-
         if (_selectedOption == _theirSelectedOption) {
           _vibeScore += 200;
-          _comboCount += 2;
         }
-
-        _roundHistory.add({
-          'mySelection': _selectedOption!,
-          'theirSelection': _theirSelectedOption!,
-        });
       });
 
-      Future.delayed(const Duration(milliseconds: 600), () {
+      // Move to next round
+      Future.delayed(const Duration(milliseconds: 500), () {
         if (!mounted) return;
         setState(() {
           _currentRound++;
           _selectedOption = null;
           _theirSelectedOption = null;
-          _showResult = false;
-          _isMyTurn = true;
+          if (_isComplete) {
+            _logoController.repeat(reverse: true);
+          }
         });
       });
     });
   }
 
   void _resetGame() {
+    _logoController.stop();
+    _logoController.reset();
     setState(() {
-      _myProgress = 0;
-      _theirProgress = 0;
       _currentRound = 0;
       _selectedOption = null;
       _theirSelectedOption = null;
-      _showResult = false;
       _waitingForThem = false;
-      _isMyTurn = true;
       _vibeScore = 0;
       _comboCount = 0;
-      _lastSelectionTime = null;
-      _roundHistory.clear();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final isGameComplete = _currentRound >= _gameRounds.length;
-
     return Scaffold(
       backgroundColor: AppTheme.deepPurple,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final screenHeight = constraints.maxHeight;
-            final isCompact = screenHeight < 650;
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      children: [
+                        // 1. TOP BAR
+                        _buildTopBar(),
+                        const SizedBox(height: 12),
 
-            return Column(
-              children: [
-                // Top bar
-                _buildTopBar(),
+                        // 2. SINGLE PROGRESS BAR
+                        _buildProgressBar(),
+                        const SizedBox(height: 16),
 
-                // Progress bar (includes avatars)
-                MatchProgressBar(
-                  myProgress: _myProgress,
-                  theirProgress: _theirProgress,
-                ),
+                        // 3. TWO PHOTO CARDS
+                        SizedBox(
+                          height: 160,
+                          child: _buildPhotoCards(),
+                        ),
+                        const SizedBox(height: 16),
 
-                const SizedBox(height: 8),
-
-                // Dual photos
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    height: isCompact ? 120 : 150,
-                    child: DualPhotoDisplay(
-                      revealProgress: _myProgress,
-                      isMyTurn: _isMyTurn,
+                        // 4. GAME CONTENT
+                        Expanded(
+                          child: _isComplete ? _buildComplete() : _buildGameRound(),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-
-                SizedBox(height: isCompact ? 8 : 12),
-
-                // Game content
-                Expanded(
-                  child: isGameComplete
-                      ? _buildGameComplete()
-                      : _buildGameRound(isCompact),
-                ),
-              ],
+              ),
             );
           },
         ),
@@ -202,244 +158,455 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  // ==================== TOP BAR ====================
   Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: [
           // Logo
           Container(
-            padding: const EdgeInsets.all(5),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 colors: [AppTheme.crystalCyan, AppTheme.crystalPink],
               ),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.auto_awesome, color: AppTheme.white, size: 16),
+            child: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           const Text(
             'MatchMake!',
-            style: TextStyle(color: AppTheme.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const Spacer(),
+          // Score
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.midPurple,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.crystalGold.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.bolt, color: AppTheme.crystalGold, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  '$_vibeScore',
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== SINGLE PROGRESS BAR ====================
+  Widget _buildProgressBar() {
+    return SizedBox(
+      height: 60,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Progress track
+          Positioned(
+            left: 50,
+            right: 50,
+            child: Container(
+              height: 14,
+              decoration: BoxDecoration(
+                color: AppTheme.deepPurple,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: AppTheme.softPurple, width: 1.5),
+              ),
+              child: Stack(
+                children: [
+                  // MY progress (left side)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: (_myProgress * 0.5).clamp(0.0, 0.5),
+                      child: Container(
+                        margin: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.crystalCyan,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // THEIR progress (right side)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: FractionallySizedBox(
+                      widthFactor: (_theirProgress * 0.5).clamp(0.0, 0.5),
+                      child: Container(
+                        margin: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.crystalPink,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
 
-          const Spacer(),
+          // YOU avatar (left)
+          Positioned(
+            left: 0,
+            child: _buildAvatar(label: 'YOU', color: AppTheme.crystalCyan),
+          ),
 
-          // Vibe Score
+          // THEM avatar (right)
+          Positioned(
+            right: 0,
+            child: _buildAvatar(label: 'THEM', color: AppTheme.crystalPink),
+          ),
+
+          // Central star logo
           ScaleTransition(
-            scale: _scorePopAnimation,
+            scale: _logoAnimation,
             child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: _isComplete
+                      ? [const Color(0xFFFF5252), const Color(0xFFFF1744)]
+                      : [AppTheme.crystalCyan, AppTheme.crystalPink],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: (_isComplete ? const Color(0xFFFF5252) : AppTheme.crystalCyan)
+                        .withValues(alpha: 0.5),
+                    blurRadius: 12,
+                    spreadRadius: 3,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar({required String label, required Color color}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppTheme.midPurple,
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Icon(Icons.person, color: color, size: 20),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  // ==================== TWO PHOTO CARDS ====================
+  Widget _buildPhotoCards() {
+    return Row(
+      children: [
+        // ME photo (left, tilted -5°)
+        Expanded(
+          child: Transform.rotate(
+            angle: -5 * math.pi / 180,
+            child: _buildPhotoCard(isMe: true),
+          ),
+        ),
+        const SizedBox(width: 16),
+        // THEM photo (right, tilted +5°)
+        Expanded(
+          child: Transform.rotate(
+            angle: 5 * math.pi / 180,
+            child: _buildPhotoCard(isMe: false),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhotoCard({required bool isMe}) {
+    final color = isMe ? AppTheme.crystalCyan : AppTheme.crystalPink;
+    final blurAmount = isMe ? 0.0 : (5 - _currentRound) * 3.0;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.6), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Photo background
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    color.withValues(alpha: 0.2),
+                    AppTheme.midPurple,
+                    AppTheme.deepPurple,
+                  ],
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.person,
+                  size: 50,
+                  color: color.withValues(alpha: isMe ? 0.5 : 0.3),
+                ),
+              ),
+            ),
+
+            // Blur for THEM only
+            if (!isMe && blurAmount > 0)
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: blurAmount, sigmaY: blurAmount),
+                child: Container(color: Colors.transparent),
+              ),
+
+            // Label
+            Positioned(
+              bottom: 8,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.deepPurple.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    isMe ? '100%' : '$_revealPercent%',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Lock icon when 0%
+            if (!isMe && _currentRound == 0)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.deepPurple.withValues(alpha: 0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.lock, color: color, size: 24),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==================== GAME ROUND ====================
+  Widget _buildGameRound() {
+    final data = _currentRoundData;
+    final options = data['options'] as List<String>;
+
+    return Column(
+      children: [
+        // Round indicator
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: AppTheme.midPurple,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.crystalGold.withValues(alpha: 0.5), width: 1.5),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.bolt, color: AppTheme.crystalGold, size: 14),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$_vibeScore',
-                    style: const TextStyle(color: AppTheme.white, fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                ],
+              child: Text(
+                'ROUND ${_currentRound + 1}/5',
+                style: const TextStyle(
+                  color: AppTheme.crystalCyan,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGameRound(bool isCompact) {
-    final roundData = _currentRoundData;
-    final options = roundData['options'] as List<String>;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          // Round + Combo
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+            if (_comboCount > 1)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.midPurple,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  'ROUND ${_currentRound + 1}/5',
-                  style: const TextStyle(
-                    color: AppTheme.crystalCyan,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1,
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.crystalGold, AppTheme.crystalPink],
                   ),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ),
-              if (_comboCount > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [AppTheme.crystalGold, AppTheme.crystalPink]),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.local_fire_department, color: AppTheme.white, size: 12),
-                      const SizedBox(width: 3),
-                      Text('${_comboCount}x', style: const TextStyle(color: AppTheme.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-
-          SizedBox(height: isCompact ? 8 : 12),
-
-          // Prompt
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(isCompact ? 12 : 14),
-            decoration: BoxDecoration(
-              color: AppTheme.midPurple,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.crystalCyan.withValues(alpha: 0.3), width: 1.5),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  roundData['prompt'],
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppTheme.white,
-                    fontSize: isCompact ? 16 : 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (_waitingForThem) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 10,
-                        height: 10,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.crystalPink),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Their turn...',
-                        style: TextStyle(color: AppTheme.crystalPink, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          SizedBox(height: isCompact ? 10 : 14),
-
-          // Word buttons
-          Expanded(
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 10,
-                alignment: WrapAlignment.center,
-                children: List.generate(options.length, (index) {
-                  return FrostedGlassButton(
-                    text: options[index],
-                    isSelected: _selectedOption == index,
-                    isTheirSelection: _theirSelectedOption == index,
-                    colorIndex: index,
-                    floatSpeed: 0.9 + (index * 0.1),
-                    onPressed: () => _handleOptionSelected(index),
-                  );
-                }),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGameComplete() {
-    final matchCount = _roundHistory.where((r) => r['mySelection'] == r['theirSelection']).length;
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                colors: [AppTheme.crystalCyan.withValues(alpha: 0.15), AppTheme.deepPurple],
-                radius: 1.5,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.crystalCyan.withValues(alpha: 0.4), width: 2),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [AppTheme.crystalGold, AppTheme.crystalPink]),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.auto_awesome, color: AppTheme.white, size: 36),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'COMPLETE!',
-                  style: TextStyle(color: AppTheme.crystalCyan, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                child: Row(
                   children: [
-                    _buildStat('VIBE', '$_vibeScore', AppTheme.crystalGold),
-                    _buildStat('MATCH', '$matchCount/5', AppTheme.crystalPink),
+                    const Icon(Icons.local_fire_department, color: Colors.white, size: 12),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${_comboCount}x',
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Prompt
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppTheme.midPurple,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppTheme.crystalCyan.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            children: [
+              Text(
+                data['prompt'],
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (_waitingForThem) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.crystalPink,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'Their turn...',
+                      style: TextStyle(color: AppTheme.crystalPink, fontSize: 11),
+                    ),
                   ],
                 ),
               ],
-            ),
+            ],
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: GameButton(text: 'PLAY AGAIN', onPressed: _resetGame),
+        ),
+        const SizedBox(height: 14),
+
+        // Word buttons
+        Expanded(
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            alignment: WrapAlignment.center,
+            children: List.generate(options.length, (i) {
+              return FrostedGlassButton(
+                text: options[i],
+                isSelected: _selectedOption == i,
+                isTheirSelection: _theirSelectedOption == i,
+                colorIndex: i,
+                floatSpeed: 0.9 + (i * 0.1),
+                onPressed: () => _handleOptionSelected(i),
+              );
+            }),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildStat(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.4), width: 1.5),
-      ),
-      child: Column(
-        children: [
-          Text(label, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
-          const SizedBox(height: 2),
-          Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
-        ],
+  // ==================== COMPLETE SCREEN ====================
+  Widget _buildComplete() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppTheme.midPurple,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.crystalCyan.withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppTheme.crystalGold, AppTheme.crystalPink],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 40),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'COMPLETE!',
+              style: TextStyle(
+                color: AppTheme.crystalCyan,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Vibe Score: $_vibeScore',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _resetGame,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.crystalCyan,
+                foregroundColor: AppTheme.deepPurple,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('PLAY AGAIN', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       ),
     );
   }
