@@ -1,60 +1,106 @@
+import 'dart:math' as math;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import 'shatter_reveal_photo.dart';
 
-class DualPhotoDisplay extends StatelessWidget {
-  final int myProgress;
-  final int theirProgress;
+class DualPhotoDisplay extends StatefulWidget {
+  final int revealProgress; // 0-5 for THEM's reveal
   final bool isMyTurn;
 
   const DualPhotoDisplay({
     super.key,
-    required this.myProgress,
-    required this.theirProgress,
+    required this.revealProgress,
     this.isMyTurn = true,
   });
+
+  @override
+  State<DualPhotoDisplay> createState() => _DualPhotoDisplayState();
+}
+
+class _DualPhotoDisplayState extends State<DualPhotoDisplay>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation;
+  int _lastProgress = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastProgress = widget.revealProgress;
+
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.95), weight: 10),
+      TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.06), weight: 45),
+      TweenSequenceItem(tween: Tween(begin: 1.06, end: 1.0), weight: 45),
+    ]).animate(CurvedAnimation(
+      parent: _scaleController,
+      curve: Curves.easeOutBack,
+    ));
+  }
+
+  @override
+  void didUpdateWidget(DualPhotoDisplay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.revealProgress > _lastProgress) {
+      _scaleController.forward(from: 0);
+      _lastProgress = widget.revealProgress;
+    }
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  double get blurAmount => (5 - widget.revealProgress) * 3.5;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate responsive sizes
-        final screenWidth = constraints.maxWidth;
-        final screenHeight = constraints.maxHeight;
-
-        // Photo card sizing - responsive to screen
-        final photoWidth = (screenWidth - 48) / 2; // 48 = padding + gap
-        final photoHeight = screenHeight * 0.85; // Leave room for avatars
-        final avatarSize = screenWidth * 0.12; // Responsive avatar
+        final cardWidth = (constraints.maxWidth - 20) / 2;
+        final cardHeight = constraints.maxHeight;
 
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ME side (left)
+            // ME photo (left, tilted left)
             Expanded(
-              child: _buildPhotoColumn(
-                isMe: true,
-                progress: 5, // ME is always fully revealed
-                isActive: isMyTurn,
-                tiltAngle: -5,
-                photoWidth: photoWidth,
-                photoHeight: photoHeight,
-                avatarSize: avatarSize,
+              child: Transform.rotate(
+                angle: -5 * math.pi / 180,
+                child: _buildPhotoCard(
+                  isMe: true,
+                  width: cardWidth,
+                  height: cardHeight,
+                ),
               ),
             ),
 
             const SizedBox(width: 12),
 
-            // THEM side (right)
+            // THEM photo (right, tilted right)
             Expanded(
-              child: _buildPhotoColumn(
-                isMe: false,
-                progress: theirProgress,
-                isActive: !isMyTurn,
-                tiltAngle: 5,
-                photoWidth: photoWidth,
-                photoHeight: photoHeight,
-                avatarSize: avatarSize,
+              child: AnimatedBuilder(
+                animation: _scaleAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _scaleAnimation.value,
+                    child: child,
+                  );
+                },
+                child: Transform.rotate(
+                  angle: 5 * math.pi / 180,
+                  child: _buildPhotoCard(
+                    isMe: false,
+                    width: cardWidth,
+                    height: cardHeight,
+                  ),
+                ),
               ),
             ),
           ],
@@ -63,120 +109,138 @@ class DualPhotoDisplay extends StatelessWidget {
     );
   }
 
-  Widget _buildPhotoColumn({
+  Widget _buildPhotoCard({
     required bool isMe,
-    required int progress,
-    required bool isActive,
-    required double tiltAngle,
-    required double photoWidth,
-    required double photoHeight,
-    required double avatarSize,
+    required double width,
+    required double height,
   }) {
-    return Column(
-      children: [
-        // Avatar with label
-        _buildAvatarWithLabel(
-          isMe: isMe,
-          isActive: isActive,
-          size: avatarSize,
+    final color = isMe ? AppTheme.crystalCyan : AppTheme.crystalPink;
+    final isActive = isMe ? widget.isMyTurn : !widget.isMyTurn;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isActive ? color : color.withValues(alpha: 0.4),
+          width: isActive ? 3 : 2,
         ),
-
-        const SizedBox(height: 10),
-
-        // Photo card
-        Expanded(
-          child: ShatterRevealPhoto(
-            revealProgress: progress,
-            isMe: isMe,
-            isActive: isActive,
-            tiltAngle: tiltAngle,
+        boxShadow: [
+          if (isActive)
+            BoxShadow(
+              color: color.withValues(alpha: 0.4),
+              blurRadius: 16,
+              spreadRadius: 4,
+            ),
+          BoxShadow(
+            color: AppTheme.pillShadow.withValues(alpha: 0.6),
+            offset: const Offset(0, 6),
+            blurRadius: 12,
           ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Photo placeholder
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    color.withValues(alpha: 0.2),
+                    AppTheme.midPurple,
+                    AppTheme.deepPurple,
+                  ],
+                ),
+              ),
+              child: _buildPhotoContent(isMe: isMe, color: color),
+            ),
+
+            // Blur overlay for THEM
+            if (!isMe && blurAmount > 0)
+              BackdropFilter(
+                filter: ImageFilter.blur(
+                  sigmaX: blurAmount,
+                  sigmaY: blurAmount,
+                ),
+                child: Container(
+                  color: AppTheme.deepPurple.withValues(alpha: 0.15),
+                ),
+              ),
+
+            // Reveal badge
+            Positioned(
+              bottom: 8,
+              left: 8,
+              right: 8,
+              child: Center(
+                child: _buildRevealBadge(isMe: isMe),
+              ),
+            ),
+
+            // Lock overlay when fully blurred
+            if (!isMe && widget.revealProgress == 0)
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.deepPurple.withValues(alpha: 0.7),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppTheme.crystalPink.withValues(alpha: 0.5),
+                      width: 2,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.lock,
+                    color: AppTheme.crystalPink,
+                    size: 24,
+                  ),
+                ),
+              ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildAvatarWithLabel({
-    required bool isMe,
-    required bool isActive,
-    required double size,
-  }) {
-    final accentColor = isMe ? AppTheme.crystalCyan : AppTheme.crystalPink;
+  Widget _buildPhotoContent({required bool isMe, required Color color}) {
+    // Placeholder - in production, use Image.network with errorBuilder
+    return Center(
+      child: Icon(
+        Icons.person,
+        size: 48,
+        color: color.withValues(alpha: isMe ? 0.5 : 0.3),
+      ),
+    );
+  }
 
-    return Column(
-      children: [
-        // Avatar
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                accentColor.withValues(alpha: 0.4),
-                AppTheme.midPurple,
-              ],
-            ),
-            border: Border.all(
-              color: isActive
-                  ? accentColor
-                  : accentColor.withValues(alpha: 0.4),
-              width: isActive ? 3 : 2,
-            ),
-            boxShadow: isActive
-                ? [
-                    BoxShadow(
-                      color: accentColor.withValues(alpha: 0.5),
-                      blurRadius: 16,
-                      spreadRadius: 4,
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: AppTheme.pillShadow.withValues(alpha: 0.5),
-                      offset: const Offset(0, 3),
-                      blurRadius: 6,
-                    ),
-                  ],
-          ),
-          child: Center(
-            child: Icon(
-              Icons.person,
-              color: isActive ? accentColor : AppTheme.mutedText,
-              size: size * 0.5,
-            ),
-          ),
+  Widget _buildRevealBadge({required bool isMe}) {
+    final percentage = isMe ? 100 : widget.revealProgress * 20;
+    final isRevealed = percentage == 100;
+    final color = isMe ? AppTheme.crystalCyan : AppTheme.crystalPink;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.deepPurple.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isRevealed ? color : AppTheme.softPurple,
+          width: 1,
         ),
-
-        const SizedBox(height: 6),
-
-        // Label
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: isActive
-                ? accentColor.withValues(alpha: 0.2)
-                : AppTheme.midPurple,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isActive
-                  ? accentColor.withValues(alpha: 0.5)
-                  : AppTheme.softPurple.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: Text(
-            isMe ? 'YOU' : 'THEM',
-            style: TextStyle(
-              color: isActive ? accentColor : AppTheme.mutedText,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-            ),
-          ),
+      ),
+      child: Text(
+        '$percentage%',
+        style: TextStyle(
+          color: isRevealed ? color : AppTheme.mutedText,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
         ),
-      ],
+      ),
     );
   }
 }
